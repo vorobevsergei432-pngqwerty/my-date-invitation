@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#fff0f5">
+  <title>Маленький вопрос 💗</title>
+  <style>
+    :root { --pink:#ff6f9f; --deep:#d83f78; --pale:#fff0f5; --ink:#66384b; }
+    * { box-sizing:border-box; }
+    body {
+      margin:0; min-height:100vh; overflow:hidden; display:grid; place-items:center;
+      padding:22px; color:var(--ink); font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
+      background:radial-gradient(circle at top left,#ffe1ec 0,transparent 42%),
+                 radial-gradient(circle at bottom right,#ffd4e3 0,transparent 45%),#fff8fb;
+    }
+    .hearts { position:fixed; inset:0; overflow:hidden; pointer-events:none; }
+    .heart { position:absolute; bottom:-50px; opacity:.45; animation:floatUp linear infinite; }
+    @keyframes floatUp { to { transform:translateY(-115vh) rotate(25deg); opacity:0; } }
+    .card {
+      position:relative; z-index:1; width:min(100%,460px); padding:34px 25px 30px;
+      border:1px solid #ffffffcc; border-radius:30px; text-align:center;
+      background:#ffffffd9; box-shadow:0 22px 70px #d83f781c; backdrop-filter:blur(10px);
+    }
+    .badge { display:inline-block; padding:8px 13px; border-radius:99px; background:#fff0f5; color:var(--deep); font-size:13px; }
+    .hero { font-size:58px; line-height:1.3; margin:13px 0 8px; }
+    h1 { font-size:clamp(27px,6vw,36px); line-height:1.15; margin:8px 0 14px; letter-spacing:-.8px; }
+    p { font-size:16px; line-height:1.6; color:#8d6374; margin:0 auto 24px; max-width:330px; }
+    .buttons { position:relative; display:flex; align-items:center; justify-content:center; gap:14px; min-height:70px; }
+    button { border:0; border-radius:16px; padding:14px 22px; font:700 16px system-ui; cursor:pointer; transition:transform .22s,box-shadow .22s; }
+    #yes { color:white; background:linear-gradient(135deg,#ff7aa8,#f34d88); box-shadow:0 10px 22px #f34d883d; position:relative; z-index:2; }
+    #yes:hover { box-shadow:0 13px 27px #f34d8855; }
+    #no { background:#fff0f5; color:#b35e7d; position:relative; z-index:3; }
+    .note { font-size:12px; color:#bd91a3; margin-top:22px; }
+    .hidden { display:none !important; }
+    .final-heart { font-size:76px; animation:pop .6s cubic-bezier(.2,1.5,.4,1) both; }
+    @keyframes pop { from { transform:scale(.2); opacity:0; } to { transform:scale(1); opacity:1; } }
+    .error { color:#b4234e; font-size:14px; margin-top:12px; }
+    @media(max-width:380px) { .card{padding:28px 17px} button{padding:13px 17px} }
+  </style>
+</head>
+<body>
+  <div class="hearts" id="hearts" aria-hidden="true"></div>
+  <main class="card">
+    <section id="invite">
+      <span class="badge">маленький вопросик 💌</span>
+      <div class="hero" aria-hidden="true">🌷</div>
+      <h1>Пойдёшь со мной<br>на свидание?</h1>
+      <p>Я тут подумал, что было бы здорово провести время вместе. Только ты и я 💗</p>
+      <div class="buttons" id="buttons">
+        <button id="yes">Да, конечно! 💖</button>
+        <button id="no" aria-label="Нет">Нет 🙈</button>
+      </div>
+      <div class="error hidden" id="error" role="status"></div>
+      <div class="note">сделано с теплом и небольшой надеждой ✨</div>
+    </section>
+    <section id="final" class="hidden">
+      <div class="final-heart" aria-hidden="true">💞</div>
+      <h1>Урааа! 💗</h1>
+      <p>Ты сделала меня чуточку счастливее. Осталось выбрать день — и наше маленькое приключение начнётся 🌸</p>
+      <span class="badge">это будет особенный день ✨</span>
+    </section>
+    <section id="used" class="hidden">
+      <div class="hero">💌</div>
+      <h1>Это приглашение уже использовано</h1>
+      <p>Похоже, ответ уже был отправлен. Спасибо за этот маленький момент 💗</p>
+    </section>
+  </main>
+<script>
+(() => {
+  const params = new URLSearchParams(location.search);
+  const token = params.get("t");
+  const invite = document.getElementById("invite");
+  const final = document.getElementById("final");
+  const used = document.getElementById("used");
+  const yes = document.getElementById("yes");
+  const no = document.getElementById("no");
+  const buttons = document.getElementById("buttons");
+  const error = document.getElementById("error");
+  let growth = 1;
+  let submitting = false;
+
+  // Floating hearts
+  const heartBox = document.getElementById("hearts");
+  for (let i=0;i<18;i++) {
+    const el=document.createElement("span");
+    el.className="heart"; el.textContent=["♡","♥","💗","✧"][i%4];
+    el.style.left=(Math.random()*100)+"%";
+    el.style.animationDuration=(9+Math.random()*11)+"s";
+    el.style.animationDelay=(-Math.random()*18)+"s";
+    el.style.fontSize=(15+Math.random()*20)+"px";
+    heartBox.appendChild(el);
+  }
+
+  if (!token) {
+    invite.classList.add("hidden");
+    used.classList.remove("hidden");
+    used.querySelector("h1").textContent = "Приглашение не найдено";
+    used.querySelector("p").textContent = "Проверь, правильно ли открыта ссылка 💗";
+    return;
+  }
+
+  fetch(`/api/status?token=${encodeURIComponent(token)}`)
+    .then(r => r.ok ? r.json() : Promise.reject())
+    .then(data => {
+      if (!data.available) { invite.classList.add("hidden"); used.classList.remove("hidden"); }
+    })
+    .catch(() => {
+      invite.classList.add("hidden"); used.classList.remove("hidden");
+      used.querySelector("h1").textContent = "Не удалось открыть приглашение";
+      used.querySelector("p").textContent = "Попробуй обновить страницу чуть позже.";
+    });
+
+  function dodge() {
+    if (submitting) return;
+    growth = Math.min(growth + .13, 2.1);
+    yes.style.transform = `scale(${growth})`;
+    yes.style.transformOrigin = "center";
+    const maxX = Math.max(70, Math.min(150, window.innerWidth * .28));
+    const maxY = 85;
+    no.style.position = "absolute";
+    no.style.left = (Math.random() * maxX - maxX/2 + buttons.clientWidth/2 - no.offsetWidth/2) + "px";
+    no.style.top = (Math.random() * maxY - maxY/2 + 20) + "px";
+  }
+  no.addEventListener("pointerenter", dodge);
+  no.addEventListener("pointerdown", e => { e.preventDefault(); dodge(); });
+  no.addEventListener("click", e => { e.preventDefault(); dodge(); });
+
+  yes.addEventListener("click", async () => {
+    if (submitting) return;
+    submitting = true;
+    yes.disabled = true;
+    no.disabled = true;
+    yes.textContent = "Отправляем любовь… 💗";
+    error.classList.add("hidden");
+    try {
+      const response = await fetch("/api/answer", {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({token})
+      });
+      const data = await response.json();
+      if (!response.ok || !data.ok) throw new Error(data.message || "Приглашение уже использовано.");
+      invite.classList.add("hidden");
+      final.classList.remove("hidden");
+      // Remove the token from browser history after successful use.
+      history.replaceState({}, "", location.pathname);
+    } catch (e) {
+      error.textContent = e.message || "Не получилось отправить ответ. Обнови страницу.";
+      error.classList.remove("hidden");
+      yes.disabled = false; no.disabled = false;
+      yes.textContent = "Да, конечно! 💖";
+      submitting = false;
+    }
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+{
+  "name": "one-time-date-invitation",
+  "version": "1.0.0",
+  "private": true,
+  "description": "One-time romantic invitation with Telegram notification",
+  "main": "server.js",
+  "scripts": { "start": "node server.js" },
+  "engines": { "node": ">=20" },
+  "dependencies": {
+    "better-sqlite3": "^11.8.1",
+    "express": "^4.21.2"
+  }
+}
